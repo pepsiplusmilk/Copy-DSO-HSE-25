@@ -1,18 +1,14 @@
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
 
+from src.app.routers import router
+from src.domain.exceptions import ApiException
+
 app = FastAPI(title="Secure Team Voting Board", version="0.1.1")
 
 
-class ApiError(Exception):
-    def __init__(self, code: str, message: str, status: int = 400):
-        self.code = code
-        self.message = message
-        self.status = status
-
-
-@app.exception_handler(ApiError)
-async def api_error_handler(request: Request, exc: ApiError):
+@app.exception_handler(ApiException)
+async def api_error_handler(request: Request, exc: ApiException):
     return JSONResponse(
         status_code=exc.status,
         content={"error": {"code": exc.code, "message": exc.message}},
@@ -27,3 +23,6 @@ async def http_exception_handler(request: Request, exc: HTTPException):
         status_code=exc.status_code,
         content={"error": {"code": "http_error", "message": detail}},
     )
+
+
+app.include_router(router)

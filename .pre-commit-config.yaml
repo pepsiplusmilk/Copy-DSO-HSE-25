@@ -35,4 +35,4 @@ repos:
         args: ["--verbose",
                "--scopes",
                "api,model,services,db,adapters,tests,configs,containers,env",
-              "feat", "fix", "refactor", "test", "docs", "chore", "ci", "style", "perf"]
+              "feat", "fix", "refactor", "test", "docs", "chore", "ci", "style", "perf", "merge"]
