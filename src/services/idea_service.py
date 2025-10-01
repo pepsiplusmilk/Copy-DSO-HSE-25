@@ -17,10 +17,10 @@ class IdeaService:
         board = self.board_repo.get(board_id)
 
         if board is None:
-            raise ApiException("error", f"board with id {board_id} does not exist", 404)
+            raise ApiException("not_found", f"board with id {board_id} does not exist", 404)
 
         if board.board_status == BoardStatus.ENDED:
-            raise ApiException("error", "voting on this board is already ended", 400)
+            raise ApiException("bad_request", "voting on this board is already ended", 400)
 
         new_idea = Idea(
             board_id=board_id,
@@ -34,12 +34,12 @@ class IdeaService:
 
     def get(self, idea_id: UUID) -> Idea:
         if self.base_repo.get(idea_id) is None:
-            raise ApiException("error", f"idea with id {idea_id} does not exist", 404)
+            raise ApiException("not_found", f"idea with id {idea_id} does not exist", 404)
 
         return self.base_repo.get(idea_id)
 
     def get_all_board_ideas(self, board_id: UUID) -> List[Idea]:
         if self.board_repo.get(board_id) is None:
-            raise ApiException("error", f"board with id {board_id} does not exist", 404)
+            raise ApiException("not_found", f"board with id {board_id} does not exist", 404)
 
         return self.base_repo.list(board_id)

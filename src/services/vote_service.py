@@ -21,10 +21,10 @@ class VoteService:
     def vote(self, idea_id: UUID):
         voted_idea = self.idea_repo.get(idea_id)
         if voted_idea is None:
-            raise ApiException("error", f"idea with {idea_id} id does not exist", 404)
+            raise ApiException("not_found", f"idea with {idea_id} id does not exist", 404)
 
         if self.board_repo.get(voted_idea.board_id).board_status == BoardStatus.ENDED:
-            raise ApiException("error", "voting on this board is closed", 400)
+            raise ApiException("bad_request", "voting on this board is closed", 400)
 
         new_vote = Vote(
             board_id=voted_idea.board_id,
@@ -40,13 +40,13 @@ class VoteService:
         vote = self.base_repo.get(vote_id)
 
         if voted_idea is None:
-            raise ApiException("error", f"idea with {idea_id} id does not exist", 404)
+            raise ApiException("not_found", f"idea with {idea_id} id does not exist", 404)
 
         if vote is None:
-            raise ApiException("error", f"vote with {vote_id} id does not exist", 404)
+            raise ApiException("not_found", f"vote with {vote_id} id does not exist", 404)
 
         if self.board_repo.get(voted_idea.board_id).board_status == BoardStatus.ENDED:
-            raise ApiException("error", "voting on this board is closed", 400)
+            raise ApiException("bad_request", "voting on this board is closed", 400)
 
         voted_idea.score -= 1
         self.base_repo.remove(vote_id)

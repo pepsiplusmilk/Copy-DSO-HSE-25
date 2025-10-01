@@ -17,7 +17,7 @@ class BoardService:
 
     def get(self, board_id: UUID):
         if self.base_repo.get(board_id) is None:
-            raise ApiException("error", f"board with id {board_id} does not exist", 404)
+            raise ApiException("not_found", f"board with id {board_id} does not exist", 404)
 
         return self.base_repo.get(board_id)
 
@@ -34,7 +34,7 @@ class BoardService:
 
     def get_scores(self, board_id: uuid.UUID):
         if self.base_repo.get(board_id) is None:
-            raise ApiException("error", f"board with id {board_id} does not exist", 404)
+            raise ApiException("not_found", f"board with id {board_id} does not exist", 404)
 
         ideas = self.ideas_repo.list(board_id)
         scores = {}
@@ -47,11 +47,11 @@ class BoardService:
     def close_voting(self, board_id: UUID):
         board = self.base_repo.get(board_id)
         if board is None:
-            raise ApiException("error", f"board with id {board_id} does not exist", 404)
+            raise ApiException("not_found", f"board with id {board_id} does not exist", 404)
 
         if board.board_status != BoardStatus.ONGOING:
             raise ApiException(
-                "error",
+                "bad_request",
                 "voting on this board already closed or isn't started yet",
                 400,
             )
