@@ -1,6 +1,12 @@
-# Trace matrix of NFR's
-Used to conveniently check progress in completion of NRF's
+# Table of nonfunctional requirements of the project
 
-| NFR ID | Story/Task | Priority | Release/Milestone |
-|--------|------------|----------|-------------------|
-|        |            |          |                   |
+| ID     | Name                              | Description                                                        | Metrics                                                                     | Check (where/how)                | Component       | Priority |
+|--------|-----------------------------------|--------------------------------------------------------------------|-----------------------------------------------------------------------------|----------------------------------|-----------------|----------|
+| NFR-01 | Password's storing                | Secure users password hashing via argon2id                         | t=3, m=256mb, p=1                                                           | Configuration files + test's     | auth            | High     |
+| NFR-02 | Correctness of board statuses     | Check that user's can't vote on closed boards                      | 100% of routes generates error on invalid case                              | Unit tests                       | api/repo        | High     |
+| NFR-03 | Voting response time              | p95 <= 150 ms @ 150 RPS on stage                                   | p95 <= 150 ms @ 150 RPS                                                     | High load tests                  | voting          | Medium   |
+| NFR-04 | User logging threshold on p95     | On logging <= 5 - retry, after that 429 with 5 min cooldown        | p99 login cases - cooldown on 6th attempt in a row that lasts in [5;10] min | Count rate limits and 429 errors | auth            | Medium   |
+| NFR-05 | User logging response time        | p95 <= 500 ms at 150 RPS on stage                                  | p95 <= 500 ms @ 500 RPS                                                     | High load tests                  | auth            | Low      |
+| NFR-06 | Block additional voting           | Block user from voting multiple times                              | 100% of voting routes generates error on multi vote                         | Unit tests                       | voting          | High     |
+| NFR-07 | RFC7808 exception format adopting | Save corr_id; Uniform json standard for errors                     | 100% of endpoints                                                           | Contracts testing                | errors          | Low      |
+| NFR-08 | Personal data privacy             | User logins/passwords and vote distribution are secured and masked | 100% of endpoints do not return personal data                               | Unit tests                       | auth/api/voting | High     |

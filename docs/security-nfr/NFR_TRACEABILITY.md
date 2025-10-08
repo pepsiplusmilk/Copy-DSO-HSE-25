@@ -1,6 +1,11 @@
-# Table of nonfunctional requirements of the project
+# Trace matrix of NFR's
+Used to conveniently check progress in completion of NRF's
 
-| ID     | Name | Description | Metrics | Check (where/how) | Component | Priority |
-|--------|------|-------------|---------|-------------------|-----------|----------|
-| NFR-01 |      |             |         |                   |           |          |
-| NFR-02 |      |             |         |                   |           |          |
+| NFR ID | Story/Task                            | Priority | Release/Milestone |
+|--------|---------------------------------------|----------|-------------------|
+| NFR-01 | AUTH: Secure passwords storing        | High     | 2025.11           |
+| NFR-08 | AUTH: Secure work with PD's           | High     | 2025.11           |
+| NFR-08 | VOTE: Secure vote's storage           | High     | 2025.11           |
+| NFR-04 | AUTH: Thresholding logging operations | Medium   | 2025.11           |
+| NFR-06 | VOTE: Setup correct voting process    | High     | 2025.10           |
+| NFR-02 | VOTE: Setup correct voting process    | High     | 2025.10           |
