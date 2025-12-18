@@ -1,52 +1,62 @@
 import uuid
-from uuid import UUID
 
-from src.domain.exceptions import ApiException
-from src.domain.repositories import BoardRepository, IdeaRepository, VoteRepository
-from src.domain.vote import Vote
-from src.domain.vote_board import BoardStatus
+from src.adapters.db_work_unit import DBWorkUnit
+from src.board_status import BoardStatus
+from src.exceptions.base import NotFoundException
+from src.exceptions.board import InvalidBoardStatus
+from src.exceptions.vote import AlreadyVoted
+from src.models.board import Board
+from src.models.idea import Idea
+from src.models.user import User
+from src.models.vote import Vote
+from src.schemas.vote import VoteCreate
 
 
-class VoteService:
-    def __init__(
-        self,
-        base_repo: VoteRepository,
-        board_repo: BoardRepository,
-        idea_repo: IdeaRepository,
-    ):
-        self.board_repo = board_repo
-        self.idea_repo = idea_repo
-        self.base_repo = base_repo
+class VoteMaintainService:
+    async def create_vote(self, uow: DBWorkUnit, data: VoteCreate):
+        async with uow:
+            idea_id, user_id = data.model_dump().values()
 
-    def vote(self, idea_id: UUID):
-        voted_idea = self.idea_repo.get(idea_id)
-        if voted_idea is None:
-            raise ApiException("not_found", f"idea with {idea_id} id does not exist", 404)
+            if await uow.repositories[User].get(user_id) is None:
+                raise NotFoundException(User)
 
-        if self.board_repo.get(voted_idea.board_id).board_status == BoardStatus.ENDED:
-            raise ApiException("bad_request", "voting on this board is closed", 400)
+            idea = await uow.repositories[Idea].get(idea_id)
+            if idea is None:
+                raise NotFoundException(Idea)
 
-        new_vote = Vote(
-            board_id=voted_idea.board_id,
-            idea_id=voted_idea.idea_id,
-            vote_id=uuid.uuid4(),
-        )
-        self.base_repo.add(new_vote)
+            board = await uow.repositories[Board].get(idea.board_id)
 
-        voted_idea.score += 1
+            if board.status != BoardStatus.published:
+                raise InvalidBoardStatus(
+                    current_state=board.status,
+                    related_state=BoardStatus.published,
+                    board_id=board.id,
+                    operation="voting",
+                )
 
-    def unvote(self, idea_id: UUID, vote_id: UUID):
-        voted_idea = self.idea_repo.get(idea_id)
-        vote = self.base_repo.get(vote_id)
+            if await uow.repositories[Vote].is_voted_already(user_id, board.id):
+                raise AlreadyVoted(
+                    user_id=user_id,
+                    board_id=board.id,
+                )
 
-        if voted_idea is None:
-            raise ApiException("not_found", f"idea with {idea_id} id does not exist", 404)
+            return await uow.repositories[Vote].create(idea_id, user_id)
 
-        if vote is None:
-            raise ApiException("not_found", f"vote with {vote_id} id does not exist", 404)
+    async def delete_vote(self, uow: DBWorkUnit, vote_id: uuid.UUID):
+        async with uow:
+            vote = await uow.repositories[Vote].get(vote_id)
+            if vote is None:
+                raise NotFoundException(Vote)
 
-        if self.board_repo.get(voted_idea.board_id).board_status == BoardStatus.ENDED:
-            raise ApiException("bad_request", "voting on this board is closed", 400)
+            idea = await uow.repositories[Idea].get(vote.idea_id)
+            board = await uow.repositories[Board].get(idea.board_id)
 
-        voted_idea.score -= 1
-        self.base_repo.remove(vote_id)
+            if board.status != BoardStatus.published:
+                raise InvalidBoardStatus(
+                    current_state=board.status,
+                    related_state=BoardStatus.published,
+                    board_id=board.id,
+                    operation="vote canceling",
+                )
+
+            await uow.repositories[Vote].delete(vote_id)

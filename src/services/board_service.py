@@ -1,71 +1,53 @@
 import uuid
-from uuid import UUID
 
-from src.domain.exceptions import ApiException
-from src.domain.idea import IdeaStatus
-from src.domain.repositories import BoardRepository, IdeaRepository
-from src.domain.vote_board import BoardStatus, VoteBoard
+from src.adapters.db_work_unit import DBWorkUnit
+from src.board_status import BoardStatus
+from src.exceptions.base import NotFoundException
+from src.exceptions.board import InvalidBoardStatus
+from src.models.board import Board
+from src.models.vote import Vote
+from src.schemas.board import BoardCreate, BoardStatusUpdate
 
 
-class BoardService:
-    def __init__(self, base_repo: BoardRepository, ideas_repo: IdeaRepository):
-        self.ideas_repo = ideas_repo
-        self.base_repo = base_repo
+class BoardMaintainService:
+    async def create_board(self, uow: DBWorkUnit, data: BoardCreate):
+        async with uow:
+            board = Board(**data.model_dump())
+            board = await uow.repositories[Board].create(board)
 
-    def get_all(self):
-        return self.base_repo.list()
+            return board
 
-    def get(self, board_id: UUID):
-        if self.base_repo.get(board_id) is None:
-            raise ApiException("not_found", f"board with id {board_id} does not exist", 404)
+    async def get_board(self, uow: DBWorkUnit, board_id: uuid.UUID):
+        async with uow:
+            board = await uow.repositories[Board].get(board_id)
 
-        return self.base_repo.get(board_id)
+            if board is None:
+                raise NotFoundException(Board)
 
-    def create(self, new_topic: str):
-        new_board = VoteBoard(
-            topic_theme=new_topic,
-            board_status=BoardStatus.ONGOING,
-            board_id=uuid.uuid4(),
-        )
-        print(new_board)
-        self.base_repo.add(new_board)
+            return board
 
-        return new_board
+    async def get_board_list(self, uow: DBWorkUnit):
+        async with uow:
+            board_list = await uow.repositories[Board].get_all()
+            return board_list
 
-    def get_scores(self, board_id: uuid.UUID):
-        if self.base_repo.get(board_id) is None:
-            raise ApiException("not_found", f"board with id {board_id} does not exist", 404)
+    async def change_board_status(
+        self, uow: DBWorkUnit, board_id: uuid.UUID, data: BoardStatusUpdate
+    ):
+        async with uow:
+            board = await self.get_board(uow, board_id)
 
-        ideas = self.ideas_repo.list(board_id)
-        scores = {}
+            if board.status == BoardStatus.closed:
+                raise InvalidBoardStatus(
+                    current_state=board.status,
+                    related_state=BoardStatus.closed,
+                    board_id=board_id,
+                    operation="changing status of board",
+                )
 
-        for idea in ideas:
-            scores[idea.idea_id] = idea.score
+            # Cleaning all votes before mark board as draft
+            if data.status == BoardStatus.draft:
+                board_votes = await uow.repositories[Vote].get_board_votes(board_id)
+                await uow.repositories[Vote].vote_mass_delete(board_votes)
 
-        return scores
-
-    def close_voting(self, board_id: UUID):
-        board = self.base_repo.get(board_id)
-        if board is None:
-            raise ApiException("not_found", f"board with id {board_id} does not exist", 404)
-
-        if board.board_status != BoardStatus.ONGOING:
-            raise ApiException(
-                "bad_request",
-                "voting on this board already closed or isn't started yet",
-                400,
-            )
-
-        board.board_status = BoardStatus.ENDED
-
-        ideas = self.ideas_repo.list(board_id)
-
-        max_score = 0
-        for idea in ideas:
-            max_score = max(max_score, idea.score)
-
-        for idea in ideas:
-            if idea.score == max_score:
-                idea.status = IdeaStatus.SELECTED
-            else:
-                idea.status = IdeaStatus.DISCARDED
+            return await uow.repositories[Board].update_status(board_id, **data.model_dump())
