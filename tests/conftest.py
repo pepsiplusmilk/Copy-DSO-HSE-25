@@ -5,6 +5,8 @@ from unittest.mock import AsyncMock
 import pytest
 
 from src.adapters.db_work_unit import DBWorkUnit
+from src.app.di_frame import get_uow
+from src.app.main import app
 from src.models.board import Board
 from src.models.idea import Idea
 from src.models.user import User
@@ -53,3 +55,14 @@ def mock_uow(mock_board_repo, mock_idea_repo, mock_user_repo, mock_vote_repo):
     uow.__aenter__.return_value = uow
     uow.__aexit__.return_value = None
     return uow
+
+
+@pytest.fixture(autouse=True)
+def override_dependency(mock_uow):
+    async def __get_uow():
+        return mock_uow
+
+    app.dependency_overrides[get_uow] = __get_uow
+    yield mock_uow
+
+    app.dependency_overrides.clear()
