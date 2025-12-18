@@ -1,8 +1,38 @@
+[project]
+name = "course-project-pepsiplusmilk"
+version = "0.1.1"
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = [
+    "alembic>=1.15.2",
+    "asyncpg>=0.30.0",
+    "fastapi[standard]>=0.115.12",
+    "pydantic>=2.11.3",
+    "pydantic-settings>=2.9.1",
+    "sqlalchemy>=2.0.40",
+    "uvicorn>=0.34.2",
+]
+
+[dependency-groups]
+dev = [
+    "httpx>=0.28.1",
+    "pytest>=8.3.5",
+    "pytest-asyncio>=0.26.0",
+    "ruff>=0.11.6",
+]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+
 [tool.ruff]
 line-length = 100
 select = ["E","F","W"]
 target-version = "py311"
 exclude = ["venv",".venv","build","dist"]
+
+[tool.ruff.lint]
+select = ["F"]
 
 [tool.isort]
 profile = "black"
@@ -14,4 +44,4 @@ combine_as_imports = true
 
 [tool.black]
 line-length = 100
-target-version = ['py311']
+target-version = ['py39']
