@@ -1,12 +1,42 @@
+import os
 import uuid
 
 from fastapi import FastAPI, HTTPException, Request
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.responses import JSONResponse
 
+from src.app.middleware_sec import SecurityHeadersMiddleware
 from src.app.routers import router
 from src.exceptions.base import ApiException
 
-app = FastAPI(title="Secure Team Voting Board", version="0.5.0")
+app = FastAPI(title="Secure Team Voting Board", version="0.5.2")
+
+# Trusted Host Middleware
+ENVIRONMENT = os.getenv("ENVIRONMENT", "development")
+if ENVIRONMENT == "production":
+    allowed_hosts = os.getenv("ALLOWED_HOSTS", "").split(",")
+    app.add_middleware(TrustedHostMiddleware, allowed_hosts=allowed_hosts)
+
+# CORS Middleware
+if ENVIRONMENT == "development":
+    origins = [
+        "http://localhost:*",
+        "http://127.0.0.1:*",
+        "http://localhost:8080",  # Адрес веб-апи
+    ]
+else:
+    origins = os.getenv("ALLOWED_ORIGINS", "").split(",")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "PUT", "DELETE", "PATCH"],
+    allow_headers=["*"],
+)
+
+app.add_middleware(SecurityHeadersMiddleware, environment=ENVIRONMENT)
 
 
 def format_to_RFC(status: int, title: str, detail: str, error_type: str = "about:blank"):
