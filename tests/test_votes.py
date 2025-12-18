@@ -10,8 +10,14 @@ from src.models.idea import Idea
 from src.models.user import User
 from src.models.vote import Vote
 from src.schemas.vote import VoteCreate
+from src.services.vote_service import VoteMaintainService
 
 pytestmark = pytest.mark.unit
+
+
+@pytest.fixture()
+def vote_service():
+    return VoteMaintainService()
 
 
 @pytest.fixture
