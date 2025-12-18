@@ -1,7 +1,7 @@
 import uuid
 from typing import List
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Request
 from fastapi.params import Depends
 
 from src.adapters.db_work_unit import DBWorkUnit
@@ -11,6 +11,10 @@ from src.services.idea_service import IdeaMaintainService
 
 router = APIRouter(prefix="/ideas", tags=["ideas"])
 service = IdeaMaintainService()
+
+
+def get_limiter(request: Request):
+    return request.app.state.limiter
 
 
 @router.post("/", response_model=IdeaCreate, status_code=201)

@@ -1,7 +1,7 @@
 import uuid
 from typing import List
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Request
 from fastapi.params import Depends
 
 from src.adapters.db_work_unit import DBWorkUnit
@@ -11,6 +11,10 @@ from src.services.user_service import UserMaintainService
 
 router = APIRouter(prefix="/users", tags=["users"])
 service = UserMaintainService()
+
+
+def get_limiter(request: Request):
+    return request.app.state.limiter
 
 
 @router.post("/", response_model=UserCreate, status_code=201)

@@ -1,7 +1,7 @@
 import uuid
 from typing import List
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Request
 from fastapi.params import Depends
 
 from src.adapters.db_work_unit import DBWorkUnit
@@ -14,6 +14,10 @@ from src.services.statistic_service import StatisticService
 router = APIRouter(prefix="/boards", tags=["boards"])
 service = BoardMaintainService()
 stat_service = StatisticService()
+
+
+def get_limiter(request: Request):
+    return request.app.state.limiter
 
 
 @router.post("/", response_model=BoardCreate, status_code=201)
