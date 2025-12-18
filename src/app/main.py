@@ -5,12 +5,19 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.responses import JSONResponse
+from slowapi.errors import RateLimitExceeded
 
-from src.app.middleware_sec import SecurityHeadersMiddleware
 from src.app.routers import router
 from src.exceptions.base import ApiException
+from src.middleware.cors_policy import SecurityHeadersMiddleware
+from src.middleware.ratelimits import (
+    RequestTimeoutMiddleware,
+    create_rate_limit_response,
+    get_limiter,
+)
 
-app = FastAPI(title="Secure Team Voting Board", version="0.5.2")
+app = FastAPI(title="Secure Team Voting Board", version="0.5.3")
+
 
 # Trusted Host Middleware
 ENVIRONMENT = os.getenv("ENVIRONMENT", "development")
@@ -37,6 +44,18 @@ app.add_middleware(
 )
 
 app.add_middleware(SecurityHeadersMiddleware, environment=ENVIRONMENT)
+
+
+# Rate Limiting Middleware
+limiter = get_limiter()
+app.state.limiter = limiter
+
+app.add_middleware(RequestTimeoutMiddleware, timeout=30.0)
+
+
+@app.exception_handler(RateLimitExceeded)
+async def rate_limit_handler(request: Request, exc: RateLimitExceeded):
+    return create_rate_limit_response(request, exc)
 
 
 def format_to_RFC(status: int, title: str, detail: str, error_type: str = "about:blank"):
@@ -78,5 +97,5 @@ app.include_router(router)
 
 
 @app.get("/health")
-async def health():
+async def health(request: Request):
     return {"status": "ok"}

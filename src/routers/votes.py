@@ -1,6 +1,6 @@
 import uuid
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Request
 from fastapi.params import Depends
 
 from src.adapters.db_work_unit import DBWorkUnit
@@ -10,6 +10,10 @@ from src.services.vote_service import VoteMaintainService
 
 router = APIRouter(prefix="/votes", tags=["votes"])
 service = VoteMaintainService()
+
+
+def get_limiter(request: Request):
+    return request.app.state.limiter
 
 
 @router.post("/", response_model=VoteCreate, status_code=201)
