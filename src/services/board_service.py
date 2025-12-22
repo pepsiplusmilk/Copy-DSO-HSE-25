@@ -1,12 +1,13 @@
 import uuid
 
 from src.adapters.db_work_unit import DBWorkUnit
+from src.adapters.logger import logger
 from src.board_status import BoardStatus
+from src.domain.models.board import Board
+from src.domain.models.vote import Vote
+from src.domain.schemas.board import BoardCreate, BoardStatusUpdate
 from src.exceptions.base import NotFoundException
 from src.exceptions.board import InvalidBoardStatus
-from src.models.board import Board
-from src.models.vote import Vote
-from src.schemas.board import BoardCreate, BoardStatusUpdate
 
 
 class BoardMaintainService:
@@ -14,6 +15,11 @@ class BoardMaintainService:
         async with uow:
             board = Board(**data.model_dump())
             board = await uow.repositories[Board].create(board)
+
+            logger.info(
+                "Board created successfully",
+                extra={"board_id": str(board.id), "title": board.title},
+            )
 
             return board
 
@@ -40,7 +46,7 @@ class BoardMaintainService:
             if board.status == BoardStatus.closed:
                 raise InvalidBoardStatus(
                     current_state=board.status,
-                    related_state=BoardStatus.closed,
+                    related_state=data.status.value,
                     board_id=board_id,
                     operation="changing status of board",
                 )
@@ -49,5 +55,14 @@ class BoardMaintainService:
             if data.status == BoardStatus.draft:
                 board_votes = await uow.repositories[Vote].get_board_votes(board_id)
                 await uow.repositories[Vote].vote_mass_delete(board_votes)
+
+            logger.info(
+                "Board status changed and linked votes erased",
+                extra={
+                    "board_id": str(board_id),
+                    "old_status": board.status.value,
+                    "new_status": data.status.value,
+                },
+            )
 
             return await uow.repositories[Board].update_status(board_id, **data.model_dump())

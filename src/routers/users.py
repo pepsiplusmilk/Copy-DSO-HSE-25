@@ -6,7 +6,7 @@ from fastapi.params import Depends
 
 from src.adapters.db_work_unit import DBWorkUnit
 from src.app.di_frame import get_uow
-from src.schemas.user import UserCreate, UserOut, UserUpdateName, UserVoteStatistic
+from src.domain.schemas.user import UserCreate, UserOut, UserUpdateName, UserVoteStatistic
 from src.services.user_service import UserMaintainService
 
 router = APIRouter(prefix="/users", tags=["users"])

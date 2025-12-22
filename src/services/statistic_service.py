@@ -1,10 +1,10 @@
 import uuid
 
 from src.adapters.db_work_unit import DBWorkUnit
+from src.domain.models.board import Board
+from src.domain.models.vote import Vote
+from src.domain.schemas.stats import Percentages, Winners
 from src.exceptions.base import NotFoundException
-from src.models.board import Board
-from src.models.vote import Vote
-from src.schemas.stats import Percentages, Winners
 
 
 class StatisticService:

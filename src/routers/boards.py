@@ -6,8 +6,8 @@ from fastapi.params import Depends
 
 from src.adapters.db_work_unit import DBWorkUnit
 from src.app.di_frame import get_uow
-from src.schemas.board import BoardCreate, BoardOut, BoardStatusUpdate
-from src.schemas.stats import Percentages, Votes, Winners
+from src.domain.schemas.board import BoardCreate, BoardOut, BoardStatusUpdate
+from src.domain.schemas.stats import Percentages, Votes, Winners
 from src.services.board_service import BoardMaintainService
 from src.services.statistic_service import StatisticService
 

@@ -1,17 +1,27 @@
 import uuid
 
 from src.adapters.db_work_unit import DBWorkUnit
+from src.adapters.logger import logger
+from src.domain.models.user import User
+from src.domain.models.vote import Vote
+from src.domain.schemas.user import UserCreate, UserUpdateName, UserVoteStatistic
+from src.domain.schemas.vote import VoteUserStatWrap
 from src.exceptions.base import NotFoundException
-from src.models.user import User
-from src.models.vote import Vote
-from src.schemas.user import UserCreate, UserUpdateName, UserVoteStatistic
-from src.schemas.vote import VoteUserStatWrap
 
 
 class UserMaintainService:
     async def create_user(self, uow: DBWorkUnit, data: UserCreate):
         async with uow:
-            return await uow.repositories[User].create(**data.model_dump())
+            new_user = await uow.repositories[User].create(**data.model_dump())
+
+            logger.info(
+                "New user was successfully created",
+                extra={
+                    "user_id": str(new_user.id),
+                },
+            )
+
+            return new_user
 
     async def get_user(self, uow: DBWorkUnit, user_id: uuid.UUID):
         async with uow:
@@ -25,7 +35,16 @@ class UserMaintainService:
     async def change_username(self, uow: DBWorkUnit, user_id: uuid.UUID, data: UserUpdateName):
         async with uow:
             # Check if user exists
-            await self.get_user(uow, user_id)
+            user = await self.get_user(uow, user_id)
+
+            logger.info(
+                "User's name was successfully updated",
+                extra={
+                    "user_id": str(user_id),
+                    "old_name": user.name,
+                    "new_name": data.name,
+                },
+            )
 
             return await uow.repositories[User].update_name(user_id, **data.model_dump())
 
@@ -33,6 +52,13 @@ class UserMaintainService:
         async with uow:
             # Check if user exists
             await self.get_user(uow, user_id)
+
+            logger.info(
+                "User was successfully deleted but it's " "votes are kept in the system",
+                extra={
+                    "user_id": str(user_id),
+                },
+            )
 
             await uow.repositories[User].delete(user_id)
 

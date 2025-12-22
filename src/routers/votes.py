@@ -5,7 +5,7 @@ from fastapi.params import Depends
 
 from src.adapters.db_work_unit import DBWorkUnit
 from src.app.di_frame import get_uow
-from src.schemas.vote import VoteCreate
+from src.domain.schemas.vote import VoteCreate
 from src.services.vote_service import VoteMaintainService
 
 router = APIRouter(prefix="/votes", tags=["votes"])

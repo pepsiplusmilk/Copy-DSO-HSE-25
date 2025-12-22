@@ -2,11 +2,13 @@ import os
 import uuid
 
 from fastapi import FastAPI, HTTPException, Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.responses import JSONResponse
 from slowapi.errors import RateLimitExceeded
 
+from src.adapters.logger import logger, mask_pii
 from src.app.routers import router
 from src.exceptions.base import ApiException
 from src.middleware.cors_policy import SecurityHeadersMiddleware
@@ -16,7 +18,7 @@ from src.middleware.ratelimits import (
     get_limiter,
 )
 
-app = FastAPI(title="Secure Team Voting Board", version="0.5.3")
+app = FastAPI(title="Secure Team Voting Board", version="0.6.2")
 
 
 # Trusted Host Middleware
@@ -58,7 +60,23 @@ async def rate_limit_handler(request: Request, exc: RateLimitExceeded):
     return create_rate_limit_response(request, exc)
 
 
+## Errors handling
+
+
 def format_to_RFC(status: int, title: str, detail: str, error_type: str = "about:blank"):
+    corr_id = str(uuid.uuid4())
+
+    logger.error(
+        f"API raised an error with code: {status}",
+        extra={
+            "type": error_type,
+            "correlation_id": corr_id,
+            "status": status,
+            "title": title,
+            "detail": detail,
+        },
+    )
+
     return JSONResponse(
         status_code=status,
         content={
@@ -66,9 +84,22 @@ def format_to_RFC(status: int, title: str, detail: str, error_type: str = "about
             "title": title,
             "status": status,
             "detail": detail,
-            "correlation_id": str(uuid.uuid4()),
+            "correlation_id": corr_id,
         },
         media_type="application/problem+json",
+    )
+
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    errors = exc.errors()
+    masked_errors = [mask_pii(err.copy()) for err in errors]
+
+    return format_to_RFC(
+        status=422,
+        title="validation_error",
+        detail=masked_errors,
+        error_type="/errors/validation_error",
     )
 
 
