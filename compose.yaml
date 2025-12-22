@@ -1,6 +1,7 @@
 services:
   app:
     build: .
+    image: sec-vote-board:dev
     ports:
       - "8080:8000"
     environment:
