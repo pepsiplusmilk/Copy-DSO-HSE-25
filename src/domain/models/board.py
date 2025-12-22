@@ -5,7 +5,8 @@ from sqlalchemy import Enum as sql_enum, String
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from ..board_status import BoardStatus
+from src.board_status import BoardStatus
+
 from .base import Base
 from .idea import Idea
 
