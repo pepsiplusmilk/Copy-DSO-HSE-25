@@ -12,12 +12,15 @@ concurrency:
 jobs:
   root-user-check:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: tests
     steps:
       - uses: actions/checkout@v4
 
       - name: Run non-root Docker check
         run: |
-          bash tests/test_non_root_docker.sh
+          bash test_non_root_docker.sh sec-vote-board:dev
 
   build:
     runs-on: ubuntu-latest
