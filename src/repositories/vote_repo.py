@@ -4,9 +4,9 @@ from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql.functions import count
 
-from src.models.board import Board
-from src.models.idea import Idea
-from src.models.vote import Vote
+from src.domain.models.board import Board
+from src.domain.models.idea import Idea
+from src.domain.models.vote import Vote
 
 
 class VoteRepository:

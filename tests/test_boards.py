@@ -1,13 +1,15 @@
 import uuid
 
 import pytest
+from httpx import ASGITransport, AsyncClient
 
 from src.board_status import BoardStatus
+from src.domain import constants
+from src.domain.models.board import Board
+from src.domain.models.vote import Vote
+from src.domain.schemas.board import BoardCreate, BoardStatusUpdate
 from src.exceptions.base import NotFoundException
 from src.exceptions.board import InvalidBoardStatus
-from src.models.board import Board
-from src.models.vote import Vote
-from src.schemas.board import BoardCreate, BoardStatusUpdate
 from src.services.board_service import BoardMaintainService
 
 pytestmark = pytest.mark.unit
@@ -93,3 +95,30 @@ class TestBoardsService:
         await board_service.change_board_status(mock_uow, board_id, data)
 
         mock_uow.repositories[Vote].vote_mass_delete.assert_called_once_with(vote_ids)
+
+
+from src.app.main import app
+
+
+class TestBoardValidation:
+    @pytest.mark.asyncio
+    async def test_board_empty_title_rejected(self, mock_uow):
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            response = await client.post("/boards/", json={"title": ""})
+
+        assert response.status_code == 422
+        data = response.json()
+        assert "detail" in data
+        assert data["status"] == 422
+
+    @pytest.mark.asyncio
+    async def test_board_title_too_long_rejected(self, mock_uow):
+        """Слишком длинный заголовок доски должен быть отклонён"""
+        long_title = "A" * (constants.BOARD_TITLE_MAX_LENGTH + 1)
+
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            response = await client.post("/boards/", json={"title": long_title})
+
+        assert response.status_code == 422
+        data = response.json()
+        assert "validation" in data["type"].lower() or "errors" in data

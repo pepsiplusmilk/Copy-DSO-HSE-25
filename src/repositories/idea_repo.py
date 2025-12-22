@@ -3,7 +3,7 @@ import uuid
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.models.idea import Idea
+from src.domain.models.idea import Idea
 
 
 class IdeaRepository:

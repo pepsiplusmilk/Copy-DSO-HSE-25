@@ -1,15 +1,16 @@
 import uuid
 
 from src.adapters.db_work_unit import DBWorkUnit
+from src.adapters.logger import logger
 from src.board_status import BoardStatus
+from src.domain.models.board import Board
+from src.domain.models.idea import Idea
+from src.domain.models.user import User
+from src.domain.models.vote import Vote
+from src.domain.schemas.vote import VoteCreate
 from src.exceptions.base import NotFoundException
 from src.exceptions.board import InvalidBoardStatus
 from src.exceptions.vote import AlreadyVoted
-from src.models.board import Board
-from src.models.idea import Idea
-from src.models.user import User
-from src.models.vote import Vote
-from src.schemas.vote import VoteCreate
 
 
 class VoteMaintainService:
@@ -40,7 +41,14 @@ class VoteMaintainService:
                     board_id=board.id,
                 )
 
-            return await uow.repositories[Vote].create(idea_id, user_id)
+            new_vote = await uow.repositories[Vote].create(idea_id, user_id)
+
+            logger.info(
+                "User successfully voted for idea",
+                extra={"vote_id": str(new_vote.id), "board_id": str(board.id)},
+            )
+
+            return new_vote
 
     async def delete_vote(self, uow: DBWorkUnit, vote_id: uuid.UUID):
         async with uow:
@@ -58,5 +66,10 @@ class VoteMaintainService:
                     board_id=board.id,
                     operation="vote canceling",
                 )
+
+            logger.info(
+                "Vote successfully canceled",
+                extra={"vote_id": str(vote_id), "board_id": str(board.id)},
+            )
 
             await uow.repositories[Vote].delete(vote_id)

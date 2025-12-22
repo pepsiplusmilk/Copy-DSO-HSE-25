@@ -2,10 +2,10 @@ import uuid
 
 import pytest
 
+from src.domain.models.user import User
+from src.domain.models.vote import Vote
+from src.domain.schemas.user import UserCreate, UserUpdateName
 from src.exceptions.base import NotFoundException
-from src.models.user import User
-from src.models.vote import Vote
-from src.schemas.user import UserCreate, UserUpdateName
 from src.services.user_service import UserMaintainService
 
 pytestmark = pytest.mark.unit

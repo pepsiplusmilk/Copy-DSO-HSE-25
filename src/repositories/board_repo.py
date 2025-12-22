@@ -4,7 +4,7 @@ from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.board_status import BoardStatus
-from src.models.board import Board
+from src.domain.models.board import Board
 
 
 class BoardRepository:

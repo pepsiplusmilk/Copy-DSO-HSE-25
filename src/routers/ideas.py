@@ -6,7 +6,7 @@ from fastapi.params import Depends
 
 from src.adapters.db_work_unit import DBWorkUnit
 from src.app.di_frame import get_uow
-from src.schemas.idea import IdeaCreate, IdeaOut, IdeaUpdateDescription, IdeaUpdateTitle
+from src.domain.schemas.idea import IdeaCreate, IdeaOut, IdeaUpdateDescription, IdeaUpdateTitle
 from src.services.idea_service import IdeaMaintainService
 
 router = APIRouter(prefix="/ideas", tags=["ideas"])
