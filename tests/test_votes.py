@@ -3,13 +3,13 @@ import uuid
 import pytest
 
 from src.board_status import BoardStatus
+from src.domain.models.board import Board
+from src.domain.models.idea import Idea
+from src.domain.models.user import User
+from src.domain.models.vote import Vote
+from src.domain.schemas.vote import VoteCreate
 from src.exceptions.board import InvalidBoardStatus
 from src.exceptions.vote import AlreadyVoted
-from src.models.board import Board
-from src.models.idea import Idea
-from src.models.user import User
-from src.models.vote import Vote
-from src.schemas.vote import VoteCreate
 from src.services.vote_service import VoteMaintainService
 
 pytestmark = pytest.mark.unit

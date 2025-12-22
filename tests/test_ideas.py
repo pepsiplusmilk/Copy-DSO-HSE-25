@@ -1,13 +1,15 @@
 import uuid
 
 import pytest
+from httpx import ASGITransport, AsyncClient
 
 from src.board_status import BoardStatus
+from src.domain import constants
+from src.domain.models.board import Board
+from src.domain.models.idea import Idea
+from src.domain.schemas.idea import IdeaCreate, IdeaUpdateTitle
 from src.exceptions.base import NotFoundException
 from src.exceptions.board import InvalidBoardStatus
-from src.models.board import Board
-from src.models.idea import Idea
-from src.schemas.idea import IdeaCreate, IdeaUpdateTitle
 from src.services.idea_service import IdeaMaintainService
 
 pytestmark = pytest.mark.unit
@@ -89,3 +91,53 @@ class TestIdeasService:
 
         with pytest.raises(InvalidBoardStatus):
             await idea_service.change_title(mock_uow, sample_idea.id, data)
+
+
+from src.app.main import app
+
+
+class TestIdeaValidation:
+    async def test_idea_title_too_long_rejected(self, mock_uow):
+        long_title = "A" * (constants.IDEA_TITLE_MAX_LENGTH + 1)
+
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            response = await client.post(
+                "/ideas/",
+                json={
+                    "title": long_title,
+                    "description": "Test",
+                    "board_id": "00000000-0000-0000-0000-000000000000",
+                },
+            )
+
+        assert response.status_code == 422
+
+    async def test_idea_description_too_long_rejected(self, mock_uow):
+        long_desc = "A" * (constants.IDEA_DESC_MAX_LENGTH + 1)
+
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            response = await client.post(
+                "/ideas/",
+                json={
+                    "title": "Test",
+                    "description": long_desc,
+                    "board_id": "00000000-0000-0000-0000-000000000000",
+                },
+            )
+
+        assert response.status_code == 422
+
+    async def test_sql_injection_in_title_rejected(self, mock_uow):
+        sql_injection = "'; DROP TABLE ideas; --"
+
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            response = await client.post(
+                "/ideas/",
+                json={
+                    "title": sql_injection,
+                    "description": "Test",
+                    "board_id": "00000000-0000-0000-0000-000000000000",
+                },
+            )
+
+        assert response.status_code in [422, 409, 404, 400]
