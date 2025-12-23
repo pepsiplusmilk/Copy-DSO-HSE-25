@@ -1,15 +1,39 @@
 services:
+  db:
+    image: postgres:17
+    restart: always
+    env_file: .env
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - backend
+
+  migrations:
+    image: sec-vote-board:dev
+    env_file: .env
+    command: ["alembic", "upgrade", "head"]
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - backend
+
   app:
     build: .
     image: sec-vote-board:dev
     ports:
       - "8080:8000"
-    environment:
-      PYTHONUNBUFFERED: 1
-      DATABASE_URL: "postgresql+asyncpg://postgres:postgres@db:5432/postgres"
+    env_file: .env
     depends_on:
       db:
         condition: service_healthy
+      migrations:
+        condition: service_completed_successfully
     security_opt:
       - no-new-privileges:true
     cap_drop:
@@ -25,23 +49,12 @@ services:
         limits:
           cpus: '0.50'
           memory: 1024M
-
-  db:
-    image: postgres:17
-    restart: always
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: postgres
-    ports:
-      - "5432:5432"
-    volumes:
-      - pgdata:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
+    networks:
+      - backend
 
 volumes:
   pgdata:
+
+networks:
+  backend:
+    driver: bridge

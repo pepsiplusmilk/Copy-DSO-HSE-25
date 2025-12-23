@@ -36,7 +36,8 @@ COPY . .
 RUN chown -R appuser:appgroup /app
 
 EXPOSE 8000
-HEALTHCHECK --interval=30s --timeout=3s --retries=3 --start-period=5s CMD ["python", "/app/docker/healthcheck.py"]
+HEALTHCHECK --interval=30s --timeout=3s --retries=3 --start-period=5s \
+    CMD ["python", "-c", "import httpx; httpx.get('http://localhost:8000/health', timeout=2.0)"]
 
 USER appuser
 

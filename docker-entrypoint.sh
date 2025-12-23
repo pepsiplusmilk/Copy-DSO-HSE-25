@@ -9,4 +9,5 @@ if [ -f "/app/alembic.ini" ] || [ -d "/app/alembic" ]; then
     echo "Alembic not installed in image; skipping migrations"
   fi
 fi
+
 exec "$@"
