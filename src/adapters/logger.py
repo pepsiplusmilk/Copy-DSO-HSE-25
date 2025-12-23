@@ -1,4 +1,5 @@
 import logging
+import os
 import sys
 from typing import Any, Dict
 
@@ -40,10 +41,10 @@ def setup_logger(name: str = "app logger") -> logging.Logger:
     if logger.handlers:
         return logger
 
-    logger.setLevel(logging.INFO)
+    logger.setLevel(os.getenv("LOG_LEVEL", "INFO"))
 
     handler = logging.StreamHandler(sys.stdout)
-    handler.setLevel(logging.INFO)
+    handler.setLevel(os.getenv("LOG_LEVEL", "INFO"))
 
     # Формат логов
     formatter = logging.Formatter(

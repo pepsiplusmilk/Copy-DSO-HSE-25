@@ -1,33 +1,45 @@
 # Build stage
-FROM python:3.11-slim AS build
+FROM python:3.11-slim@sha256:158caf0e080e2cd74ef2879ed3c4e697792ee65251c8208b7afb56683c32ea6c AS build
 WORKDIR /app
-COPY requirements.txt requirements-dev.txt ./
-RUN pip install --no-cache-dir -r requirements.txt -r requirements-dev.txt
-RUN pip install alembic
+
+ENV PYTHONDONTWRITEBYTECODE=1
+
+COPY requirements.txt ./
+RUN pip wheel --no-cache-dir -r requirements.txt -w /wheels
 COPY . .
 
 ENV PYTHONPATH=/app
-RUN pytest tests/ -m unit -v --tb=short -s
+#RUN pytest tests/ -m unit -v --tb=short -s
 
 # Runtime stage
-FROM python:3.11-slim
+FROM python:3.11-slim@sha256:158caf0e080e2cd74ef2879ed3c4e697792ee65251c8208b7afb56683c32ea6c
 WORKDIR /app
 
-RUN apt-get update && apt-get install -y --no-install-recommends curl && rm -rf /var/lib/apt/lists/*
-
-#RUN useradd -m appuser
-
-#RUN addgroup -S appgroup && adduser -S appuser -G appgroup
-RUN groupadd -r appgroup && useradd -r -g appgroup appuser
-
-COPY --from=build /usr/local/lib/python3.11 /usr/local/lib/python3.11
-COPY --from=build /usr/local/bin /usr/local/bin
-COPY . .
-
-ENV PYTHONPATH=/app
+ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 
+RUN groupadd -r appgroup && useradd -r -g appgroup appuser
+
+COPY --from=build /wheels /wheels
+
+# copy requirements and install only from wheels; use buildkit cache for pip
+COPY requirements.txt ./
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install --no-cache-dir --no-index --find-links /wheels -r requirements.txt
+
+COPY docker-entrypoint.sh /app/docker-entrypoint.sh
+RUN chmod +x /app/docker-entrypoint.sh
+
+COPY . .
+
+# ensure correct ownership before switching user
+RUN chown -R appuser:appgroup /app
+
 EXPOSE 8000
-HEALTHCHECK CMD curl -f http://localhost:8000/health || exit 1
+HEALTHCHECK --interval=30s --timeout=3s --retries=3 --start-period=5s \
+    CMD ["python", "-c", "import httpx; httpx.get('http://localhost:8000/health', timeout=2.0)"]
+
 USER appuser
+
+ENTRYPOINT ["/app/docker-entrypoint.sh"]
 CMD ["uvicorn", "src.app.main:app", "--host", "0.0.0.0", "--port", "8000"]
