@@ -27,7 +27,7 @@ concurrency:
 
 env:
   SEMGREP_VERSION: "1.146.0"
-  GITLEAKS_VERSION: "v8.30.0"
+  GITLEAKS_VERSION: "8.30.0"
   REPORTS_DIR: "docs/reports/pipeline-generated-reports/sast-secrets"
 
 jobs:
