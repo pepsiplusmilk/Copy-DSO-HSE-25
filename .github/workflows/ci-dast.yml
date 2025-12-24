@@ -28,9 +28,6 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
-  ENVIRONMENT: "development"
-  LOG_LEVEL: "INFO"
-
 jobs:
   dast-zap-baseline:
     name: OWASP ZAP Baseline Scan

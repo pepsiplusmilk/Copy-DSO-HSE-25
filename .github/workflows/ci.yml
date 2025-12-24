@@ -13,6 +13,7 @@ concurrency:
 
 jobs:
   container-lint:
+    name: Hadoo Lint check
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -35,6 +36,7 @@ jobs:
           retention-days: 30
 
   container-scan:
+    name: Container Security Scan
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -70,6 +72,7 @@ jobs:
           retention-days: 30
 
   root-user-check:
+    name: Non-root user Docker check
     runs-on: ubuntu-latest
     environment: testing
     env:
