@@ -1,4 +1,4 @@
-name: SAST & Secrets Scanning
+name: sast
 
 on:
   workflow_dispatch:
@@ -26,7 +26,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  SEMGREP_VERSION: "1.146.0"
+  SEMGREP_VERSION: "v1.146.0"
   GITLEAKS_VERSION: "v8.30.0"
   REPORTS_DIR: "docs/reports/pipeline-generated-reports/sast-secrets"
 

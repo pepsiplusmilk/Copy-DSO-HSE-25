@@ -18,18 +18,17 @@ from src.middleware.ratelimits import (
     get_limiter,
 )
 
-app = FastAPI(title="Secure Team Voting Board", version="0.8.0")
+app = FastAPI(title="Secure Team Voting Board", version="0.10.1")
 
 
 # Trusted Host Middleware
-# FIXED (★★ C4): Added validation for environment variables
 ENVIRONMENT = os.getenv("ENVIRONMENT", "development")
 if not ENVIRONMENT or ENVIRONMENT not in ["development", "staging", "production"]:
     logger.warning(f"Invalid ENVIRONMENT value: {ENVIRONMENT}, defaulting to development")
     ENVIRONMENT = "development"
 
 if ENVIRONMENT == "production":
-    allowed_hosts_str = os.getenv("ALLOWED_HOSTS")
+    allowed_hosts_str = os.getenv("ALLOWED_HOSTS", "")
     if not allowed_hosts_str:
         logger.error("ALLOWED_HOSTS must be set in production")
         raise ValueError("ALLOWED_HOSTS environment variable is required in production")
@@ -41,15 +40,14 @@ if ENVIRONMENT == "production":
     app.add_middleware(TrustedHostMiddleware, allowed_hosts=allowed_hosts)
 
 # CORS Middleware
-# FIXED (★★ C4): Added validation for ALLOWED_ORIGINS
 if ENVIRONMENT == "development":
     origins = [
         "http://localhost:*",
         "http://127.0.0.1:*",
-        "http://localhost:8080",
+        "http://localhost:8080",  # Адрес веб-апи
     ]
 else:
-    allowed_origins_str = os.getenv("ALLOWED_ORIGINS")
+    allowed_origins_str = os.getenv("ALLOWED_ORIGINS", "")
     if not allowed_origins_str:
         logger.error("ALLOWED_ORIGINS must be set in non-development environments")
         raise ValueError("ALLOWED_ORIGINS environment variable is required")
@@ -136,6 +134,7 @@ async def api_error_handler(request: Request, exc: ApiException):
 
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request: Request, exc: HTTPException):
+    # Normalize FastAPI HTTPException into our error envelope
     detail = exc.detail if isinstance(exc.detail, str) else "Unexpected error"
     return format_to_RFC(
         status=exc.status_code,
