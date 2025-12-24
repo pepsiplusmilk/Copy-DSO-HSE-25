@@ -1,4 +1,4 @@
-name: sast
+name: CI - SAST
 
 on:
   workflow_dispatch:
