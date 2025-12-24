@@ -22,20 +22,41 @@ app = FastAPI(title="Secure Team Voting Board", version="0.8.0")
 
 
 # Trusted Host Middleware
+# FIXED (★★ C4): Added validation for environment variables
 ENVIRONMENT = os.getenv("ENVIRONMENT", "development")
+if not ENVIRONMENT or ENVIRONMENT not in ["development", "staging", "production"]:
+    logger.warning(f"Invalid ENVIRONMENT value: {ENVIRONMENT}, defaulting to development")
+    ENVIRONMENT = "development"
+
 if ENVIRONMENT == "production":
-    allowed_hosts = os.getenv("ALLOWED_HOSTS", "").split(",")
+    allowed_hosts_str = os.getenv("ALLOWED_HOSTS")
+    if not allowed_hosts_str:
+        logger.error("ALLOWED_HOSTS must be set in production")
+        raise ValueError("ALLOWED_HOSTS environment variable is required in production")
+
+    allowed_hosts = [host.strip() for host in allowed_hosts_str.split(",") if host.strip()]
+    if not allowed_hosts:
+        raise ValueError("ALLOWED_HOSTS cannot be empty in production")
+
     app.add_middleware(TrustedHostMiddleware, allowed_hosts=allowed_hosts)
 
 # CORS Middleware
+# FIXED (★★ C4): Added validation for ALLOWED_ORIGINS
 if ENVIRONMENT == "development":
     origins = [
         "http://localhost:*",
         "http://127.0.0.1:*",
-        "http://localhost:8080",  # Адрес веб-апи
+        "http://localhost:8080",
     ]
 else:
-    origins = os.getenv("ALLOWED_ORIGINS", "").split(",")
+    allowed_origins_str = os.getenv("ALLOWED_ORIGINS")
+    if not allowed_origins_str:
+        logger.error("ALLOWED_ORIGINS must be set in non-development environments")
+        raise ValueError("ALLOWED_ORIGINS environment variable is required")
+
+    origins = [origin.strip() for origin in allowed_origins_str.split(",") if origin.strip()]
+    if not origins:
+        raise ValueError("ALLOWED_ORIGINS cannot be empty")
 
 app.add_middleware(
     CORSMiddleware,
@@ -115,7 +136,6 @@ async def api_error_handler(request: Request, exc: ApiException):
 
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request: Request, exc: HTTPException):
-    # Normalize FastAPI HTTPException into our error envelope
     detail = exc.detail if isinstance(exc.detail, str) else "Unexpected error"
     return format_to_RFC(
         status=exc.status_code,
