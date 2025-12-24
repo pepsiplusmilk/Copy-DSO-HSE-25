@@ -178,7 +178,7 @@ def generate_markdown_summary(
 """
 
     critical_findings = [f for f in semgrep_findings if f["severity"] == "ERROR"]
-    summary += generate_findings_section(critical_findings, "Critical Findings (ERROR)", "🔴")
+    summary += generate_findings_section(critical_findings, "Critical Findings (ERROR)", "")
 
     if gitleaks_secrets:
         summary += "\n## Exposed Secrets\n\n"
