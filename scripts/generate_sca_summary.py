@@ -1,0 +1,230 @@
+#!/usr/bin/env python3
+"""
+Generate SCA (Software Composition Analysis) summary report.
+
+Usage:
+    python scripts/generate_sca_summary.py <reports_dir>
+"""
+
+import json
+import sys
+from datetime import datetime
+from pathlib import Path
+from typing import Any, Dict, List
+
+
+def load_sca_report(report_file: Path) -> Dict[str, Any]:
+    if not report_file.exists():
+        print(f"SCA report not found: {report_file}", file=sys.stderr)
+        sys.exit(1)
+
+    try:
+        with open(report_file, encoding="utf-8") as f:
+            return json.load(f)
+    except json.JSONDecodeError as e:
+        print(f"Invalid JSON: {e}", file=sys.stderr)
+        sys.exit(1)
+
+
+def analyze_vulnerabilities(matches: List[Dict[str, Any]]) -> tuple:
+    severity_counts = {"Critical": 0, "High": 0, "Medium": 0, "Low": 0, "Negligible": 0}
+    critical_vulns = []
+    high_vulns = []
+
+    for match in matches:
+        vuln = match.get("vulnerability", {})
+        artifact = match.get("artifact", {})
+        severity = vuln.get("severity", "Unknown")
+
+        severity_counts[severity] = severity_counts.get(severity, 0) + 1
+
+        fix_versions = vuln.get("fix", {}).get("versions", [])
+        vuln_data = {
+            "id": vuln.get("id", "UNKNOWN"),
+            "package": artifact.get("name", "unknown"),
+            "version": artifact.get("version", "unknown"),
+            "fixed_in": fix_versions[0] if fix_versions else "N/A",
+            "description": vuln.get("description", "")[:200],
+        }
+
+        if severity == "Critical":
+            critical_vulns.append(vuln_data)
+        elif severity == "High":
+            high_vulns.append(vuln_data)
+
+    return severity_counts, critical_vulns, high_vulns
+
+
+def generate_vulnerability_section(vulns: List[Dict], emoji: str, name: str) -> str:
+    if not vulns:
+        return ""
+
+    section = f"\n## {emoji} {name} Severity Vulnerabilities\n\n"
+
+    for idx, vuln in enumerate(vulns[:10], 1):
+        section += f"### {idx}. {vuln['id']}\n\n"
+        section += f"**Package:** `{vuln['package']}@{vuln['version']}`\n"
+        section += f"**Fixed in:** `{vuln['fixed_in']}`\n"
+        section += f"**Description:** {vuln['description']}\n\n"
+
+        if name == "Critical":
+            section += "**Action:** Update immediately or add justified waiver\n\n"
+        else:
+            section += "**Action:** Update package or document waiver\n\n"
+
+        section += "---\n\n"
+
+    if len(vulns) > 10:
+        section += f"*...and {len(vulns) - 10} more {name.lower()} vulnerabilities*\n\n"
+
+    return section
+
+
+def generate_remediation_plan(severity_counts: Dict[str, int]) -> str:
+    critical = severity_counts.get("Critical", 0)
+    high = severity_counts.get("High", 0)
+
+    plan = "\n## Remediation Plan\n\n"
+
+    if critical > 0 or high > 0:
+        plan += "### Immediate Actions Required\n\n"
+
+        if critical > 0:
+            plan += f"**{critical} Critical vulnerabilities** - Fix within 24h\n\n"
+
+        if high > 0:
+            plan += f"**{high} High vulnerabilities** - Fix within 7 days\n\n"
+
+        plan += """
+### Steps to Fix
+
+1. **Update dependencies:**
+   ```bash
+   pip install --upgrade <package-name>
+   pip freeze > requirements.txt
+   ```
+
+2. **Test changes:**
+   ```bash
+   pytest tests/
+   ```
+
+3. **Rebuild Docker image:**
+   ```bash
+   docker build -t sec-vote-board:updated .
+   ```
+
+4. **Verify fix:**
+   ```bash
+   grype sec-vote-board:updated
+   ```
+
+### Adding a Waiver
+
+If update is not possible, add to `waivers.yml`:
+
+```yaml
+vulnerabilities:
+  - id: CVE-YYYY-XXXXX
+    package: package-name
+    version: "x.y.z"
+    severity: High
+    reason: |
+      Why update is not possible.
+      What mitigations are in place.
+    expires: "2024-12-31"
+    approved_by: "security-team@example.com"
+    ticket: "SEC-XXX"
+```
+"""
+    else:
+        plan += "No critical or high vulnerabilities found.\n\n"
+        plan += "**Recommended:** Keep dependencies updated regularly.\n\n"
+
+    return plan
+
+
+def generate_markdown_summary(
+    matches: List[Dict], severity_counts: Dict, critical_vulns: List, high_vulns: List
+) -> str:
+    summary = f"""# SCA Vulnerability Scan Summary
+
+**Scan Date:** {datetime.now().strftime("%Y-%m-%d %H:%M:%S UTC")}
+
+## Vulnerability Summary
+
+| Severity | Count |
+|----------|-------|
+| Critical | {severity_counts['Critical']} |
+| High | {severity_counts['High']} |
+| Medium | {severity_counts['Medium']} |
+| Low | {severity_counts['Low']} |
+| Negligible | {severity_counts['Negligible']} |
+
+**Total:** {len(matches)}
+
+"""
+
+    summary += generate_vulnerability_section(critical_vulns, "", "Critical")
+    summary += generate_vulnerability_section(high_vulns, "", "High")
+    summary += generate_remediation_plan(severity_counts)
+
+    summary += """
+## Resources
+
+- [NVD Database](https://nvd.nist.gov/)
+- [GitHub Security Advisories](https://github.com/advisories)
+- [Grype Documentation](https://github.com/anchore/grype)
+
+---
+
+*Generated by SBOM & SCA workflow*
+"""
+
+    return summary
+
+
+def main():
+    if len(sys.argv) < 2:
+        print("Usage: python generate_sca_summary.py <reports_dir>", file=sys.stderr)
+        sys.exit(1)
+
+    reports_dir = Path(sys.argv[1])
+    if not reports_dir.exists():
+        print(f"Directory not found: {reports_dir}", file=sys.stderr)
+        sys.exit(1)
+
+    report_file = reports_dir / "sca_report.json"
+    print(f"Loading: {report_file}")
+    data = load_sca_report(report_file)
+
+    matches = data.get("matches", [])
+    print(f"Analyzing {len(matches)} vulnerabilities...")
+
+    severity_counts, critical_vulns, high_vulns = analyze_vulnerabilities(matches)
+
+    print("Generating summary...")
+    summary = generate_markdown_summary(matches, severity_counts, critical_vulns, high_vulns)
+
+    summary_file = reports_dir / "sca_summary.md"
+    with open(summary_file, "w", encoding="utf-8") as f:
+        f.write(summary)
+
+    print(f"\nSummary saved: {summary_file}")
+    print("\nStatistics:")
+    print(f"Total: {len(matches)}")
+    print(f"Critical: {severity_counts['Critical']}")
+    print(f"High: {severity_counts['High']}")
+    print(f"Medium: {severity_counts['Medium']}")
+    print(f"Low: {severity_counts['Low']}")
+
+    if severity_counts["Critical"] > 0:
+        print(f"\nFound {severity_counts['Critical']} CRITICAL vulnerabilities!")
+        sys.exit(1)
+
+    print("\nDone")
+    sys.exit(0)
+
+
+if __name__ == "__main__":
+    main()
