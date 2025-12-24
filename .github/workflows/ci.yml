@@ -3,10 +3,12 @@ on:
   pull_request:
   push:
     branches: [main]
+
 permissions:
   contents: read
+
 concurrency:
-  group: ci-${{ github.ref }}
+  group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -69,25 +71,78 @@ jobs:
 
   root-user-check:
     runs-on: ubuntu-latest
+    environment: testing
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      ALEMBIC_DATABASE_URL: ${{ secrets.ALEMBIC_DATABASE_URL }}
     defaults:
       run:
         working-directory: tests
     steps:
       - uses: actions/checkout@v4
 
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build image with cache
+        uses: docker/build-push-action@v5
+        with:
+          context: ..
+          file: ../Dockerfile
+          tags: sec-vote-board:dev
+          load: true
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
       - name: Run non-root Docker check
         run: |
           bash test_non_root_docker.sh sec-vote-board:dev
 
   build:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
+    environment: testing
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python-version: ["3.9", "3.11", "3.12"]
+    name: Test (Python ${{ matrix.python-version }}, ${{ matrix.os }})
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      ALEMBIC_DATABASE_URL: ${{ secrets.ALEMBIC_DATABASE_URL }}
+      ALLOWED_ORIGINS: ${{ secrets.ALLOWED_ORIGINS }}
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
-          cache: "pip"
+          python-version: ${{ matrix.python-version }}
+
+      - name: Cache pip packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/pip
+            ~\AppData\Local\pip\Cache
+          key: ${{ runner.os }}-pip-${{ matrix.python-version }}-${{ hashFiles('requirements.txt', 'requirements-dev.txt', 'pyproject.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-${{ matrix.python-version }}-
+            ${{ runner.os }}-pip-
+
+      - name: Cache pre-commit environments
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pre-commit
+          key: ${{ runner.os }}-pre-commit-${{ matrix.python-version }}-${{ hashFiles('.pre-commit-config.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pre-commit-${{ matrix.python-version }}-
+            ${{ runner.os }}-pre-commit-
+
+      - name: Mask sensitive values
+        run: |
+          echo "::add-mask::${{ secrets.DATABASE_URL }}"
+          echo "::add-mask::${{ secrets.ALEMBIC_DATABASE_URL }}"
+          echo "::add-mask::${{ secrets.ALLOWED_ORIGINS }}"
 
       - name: Install dependencies
         run: |
@@ -100,8 +155,63 @@ jobs:
           black --check .
           isort --check-only .
 
-      - name: Tests
-        run: pytest -q
+      - name: Tests with coverage
+        run: |
+          pytest --cov=src --cov-report=html --cov-report=json --cov-report=xml --html=pytest_report.html --self-contained-html
+
+      - name: Upload coverage HTML
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage-html-${{ matrix.os }}-py${{ matrix.python-version }}
+          path: coverage_html/
+          retention-days: 30
+
+      - name: Upload coverage JSON
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage-json-${{ matrix.os }}-py${{ matrix.python-version }}
+          path: coverage.json
+          retention-days: 30
+
+      - name: Upload coverage XML (for Codecov)
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage-xml-${{ matrix.os }}-py${{ matrix.python-version }}
+          path: coverage.xml
+          retention-days: 30
+
+      - name: Upload pytest HTML report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: pytest-report-${{ matrix.os }}-py${{ matrix.python-version }}
+          path: pytest_report.html
+          retention-days: 30
 
       - name: Pre-commit (all files)
         run: pre-commit run --all-files
+
+      - name: Build wheel
+        if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.11'
+        run: |
+          python -m pip install build
+          python -m build
+
+      - name: Upload built package
+        if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.11'
+        uses: actions/upload-artifact@v4
+        with:
+          name: python-package-distributions
+          path: dist/
+          retention-days: 90
+
+      - name: Display environment info (sanitized)
+        if: always()
+        run: |
+          echo "Environment: ${{ vars.ENVIRONMENT }}"
+          echo "Log Level: ${{ vars.LOG_LEVEL }}"
+          echo "Python Version: ${{ matrix.python-version }}"
+          echo "OS: ${{ matrix.os }}"

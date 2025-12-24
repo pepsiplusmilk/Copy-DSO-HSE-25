@@ -18,7 +18,7 @@ from src.middleware.ratelimits import (
     get_limiter,
 )
 
-app = FastAPI(title="Secure Team Voting Board", version="0.7.0")
+app = FastAPI(title="Secure Team Voting Board", version="0.8.0")
 
 
 # Trusted Host Middleware

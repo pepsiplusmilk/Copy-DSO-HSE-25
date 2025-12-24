@@ -34,5 +34,5 @@ repos:
         stages: [commit-msg]
         args: ["--verbose",
                "--scopes",
-               "api,model,services,db,adapters,tests,configs,containers,env",
+               "api,model,services,db,adapters,tests,configs,containers,env,security",
               "feat", "fix", "refactor", "test", "docs", "chore", "ci", "style", "perf", "merge"]
