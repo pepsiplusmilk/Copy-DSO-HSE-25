@@ -1,0 +1,49 @@
+# Vulnerability Waivers Policy
+#
+# This file contains approved exceptions for known vulnerabilities.
+# All waivers must be reviewed and approved by the security team.
+
+vulnerabilities:
+  # Example waiver (remove when adding real entries):
+  #
+  # - id: CVE-2024-12345
+  #   package: example-package
+  #   version: "1.2.3"
+  #   severity: High
+  #   reason: |
+  #     No patch available. Vulnerability affects unused functionality.
+  #     Mitigations: WAF rules block exploit patterns.
+  #   expires: "2024-12-31"
+  #   approved_by: "security-team@example.com"
+  #   ticket: "SEC-123"
+
+  # Add real waivers below:
+  # (Currently empty - all vulnerabilities should be fixed)
+
+# Waiver Guidelines:
+#
+# Required fields:
+#   - id: CVE identifier
+#   - package: Package name
+#   - version: Affected version
+#   - severity: Critical/High/Medium/Low
+#   - reason: Why waiver is needed + mitigations
+#   - expires: Expiration date (YYYY-MM-DD)
+#   - approved_by: Security team email
+#   - ticket: Tracking issue ID
+#
+# Expiration limits:
+#   - Critical: 30 days max
+#   - High: 60 days max
+#   - Medium: 90 days max
+#   - Low: 180 days max
+#
+# Approval process:
+#   1. Create PR with waiver
+#   2. Security team reviews
+#   3. Merge after approval
+#
+# Review schedule:
+#   - Critical/High: Weekly
+#   - Medium: Monthly
+#   - Low: Quarterly
