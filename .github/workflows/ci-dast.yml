@@ -10,21 +10,26 @@ on:
       - 'compose.yaml'
       - 'Dockerfile'
       - 'requirements.txt'
+      - 'scripts/generate_zap_summary.py'
   pull_request:
     paths:
       - 'src/**'
       - 'compose.yaml'
       - 'Dockerfile'
+      - '.github/workflows/ci-dast.yml'
 
 permissions:
   contents: read
+  security-events: write
+  issues: write
+  pull-requests: write
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
-env:
-  REPORTS_DIR: "docs/reports/pipeline-generated-reports/dast"
+  ENVIRONMENT: "development"
+  LOG_LEVEL: "INFO"
 
 jobs:
   dast-zap-baseline:
@@ -126,6 +131,8 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           if [ -f "${{ env.REPORTS_DIR }}/zap_summary.md" ]; then
             cat ${{ env.REPORTS_DIR }}/zap_summary.md >> $GITHUB_STEP_SUMMARY
+          else
+            echo "ZAP summary report not generated" >> $GITHUB_STEP_SUMMARY
           fi
 
       - name: Comment PR with DAST results
