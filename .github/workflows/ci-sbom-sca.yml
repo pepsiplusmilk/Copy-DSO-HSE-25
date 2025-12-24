@@ -31,7 +31,7 @@ concurrency:
 env:
   SYFT_VERSION: "v1.16.0"
   GRYPE_VERSION: "v0.104.3"
-  REPORTS_DIR: "doc/reports/auto-generated-reports/sbom-sca"
+  REPORTS_DIR: "doc/reports/pipeline-generated-reports/sbom-sca"
 
 jobs:
   generate-sbom:

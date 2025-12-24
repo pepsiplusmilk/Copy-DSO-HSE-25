@@ -1,6 +1,76 @@
-title = "Gitleaks baseline (extend in P10)"
+title = "Gitleaks configuration of Secure Team Voting Board project"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Allowlist for test files and known false positives"
+
+# Paths to ignore
+paths = [
+    '''EVIDENCE/''',
+    '''tests/''',
+    '''test_''',
+    '''.github/workflows/''',
+    '''docs/''',
+    '''doc/''',
+    '''scripts/generate_''',
+    '''.gitignore''',
+    '''.env.example''',
+    '''.env.ci''',
+    '''coverage''',
+    '''__pycache__''',
+]
+
+# Regexes for test tokens and example values
+regexes = [
+    '''TEST_SECRET_DO_NOT_USE''',
+    '''test-secret-key-for-ci-only''',
+    '''ci_test_password''',
+    '''ci_test_user''',
+    '''example-api-key''',
+    '''demo-token-not-real''',
+    '''your_secure_password''',
+    '''your_db_user''',
+    '''your-super-secret''',
+    '''placeholder-secret''',
+    '''sk-test-''',
+    '''pk_test_''',
+]
+
+commits = []
+
+stopwords = [
+    '''EXAMPLE''',
+    '''SAMPLE''',
+    '''PLACEHOLDER''',
+    '''DEMO''',
+    '''DUMMY''',
+    '''FAKE''',
+    '''MOCK''',
+    '''TEST''',
+]
+
 [[rules]]
-description = "Generic secret (example disabled)"
-regex = '''(?i)dummy-never-match'''
-entropy = 5.0
-filename = "nowhere"
+id = "generic-api-key"
+description = "Detected a Generic API Key"
+regex = '''(?i)(?:api[_-]?key|apikey|api[_-]?secret)(?:\s*[:=]\s*)['"]?([a-z0-9_\-]{32,})['"]?'''
+entropy = 3.5
+secretGroup = 1
+
+[[rules]]
+id = "database-connection-string"
+description = "Detected database connection string with credentials"
+regex = '''(?i)(postgres|postgresql|mysql|mongodb|redis)://[a-z0-9_-]+:[^@\s]{8,}@'''
+
+[[rules]]
+id = "private-key"
+description = "Detected a private key"
+regex = '''-----BEGIN (?:RSA |EC |DSA |OPENSSH |PGP )?PRIVATE KEY-----'''
+
+[[rules]]
+id = "python-hardcoded-password"
+description = "Potential hardcoded password in Python code"
+regex = '''(?i)(?:password|passwd|pwd)\s*=\s*['"]([^'"\s]{8,})['"]'''
+entropy = 3.0
+secretGroup = 1

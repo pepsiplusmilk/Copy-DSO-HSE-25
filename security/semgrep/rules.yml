@@ -1,0 +1,130 @@
+rules:
+  # Rule: SQL Injection in raw queries
+  - id: fastapi-sql-injection
+    patterns:
+      - pattern-either:
+          - pattern: $SESSION.execute($QUERY)
+          - pattern: $SESSION.exec($QUERY)
+          - pattern: sqlalchemy.text($QUERY)
+      - pattern-not: $SESSION.execute(sqlalchemy.text("..."))
+      - pattern-not: $SESSION.execute("SELECT ...")
+      - metavariable-pattern:
+          metavariable: $QUERY
+          patterns:
+            - pattern-either:
+                - pattern: 'f"..."'
+                - pattern: '"..." + ...'
+                - pattern: '... + "..."'
+                - pattern: $X.format(...)
+    message: |
+      SQL injection vulnerability detected in raw query execution.
+      User input appears to be concatenated or formatted into SQL query.
+      Use parameterized queries with SQLAlchemy ORM or bound parameters instead.
+    languages: [python]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-89: SQL Injection"
+      owasp: "A03:2021 - Injection"
+      confidence: HIGH
+      likelihood: HIGH
+      impact: HIGH
+      technology:
+        - fastapi
+        - sqlalchemy
+      references:
+        - https://owasp.org/www-community/attacks/SQL_Injection
+        - https://docs.sqlalchemy.org/en/20/core/connections.html#using-textual-sql
+
+  # Rule: Unsafe os.getenv without validation
+  - id: fastapi-unsafe-getenv-no-validation
+    patterns:
+      - pattern-either:
+          - pattern: os.getenv($KEY)
+          - pattern: os.environ.get($KEY)
+          - pattern: os.environ[$KEY]
+      - pattern-not-inside: |
+          $VAR = os.getenv(...)
+          if $VAR is None:
+            ...
+      - pattern-not-inside: |
+          $VAR = os.getenv(...)
+          if not $VAR:
+            ...
+      - pattern-not-inside: |
+          $VAR = os.getenv(..., ...)
+      - pattern-inside: |
+          def $FUNC(...):
+            ...
+      - metavariable-regex:
+          metavariable: $KEY
+          regex: .*(SECRET|PASSWORD|TOKEN|KEY|API|CREDENTIAL).*
+    message: |
+      Environment variable containing sensitive data is retrieved without validation.
+      Always provide default values or validate that critical environment variables are set.
+      Use pydantic Settings or validate at startup.
+    languages: [python]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-453: Insecure Default Variable Initialization"
+      owasp: "A05:2021 - Security Misconfiguration"
+      confidence: MEDIUM
+      likelihood: MEDIUM
+      impact: MEDIUM
+      technology:
+        - fastapi
+      references:
+        - https://fastapi.tiangolo.com/advanced/settings/
+
+  # Rule: Unsafe deserialization with pickle
+  - id: fastapi-unsafe-pickle
+    patterns:
+      - pattern-either:
+          - pattern: pickle.loads($DATA)
+          - pattern: pickle.load($FILE)
+      - pattern-not: pickle.loads(base64.b64decode("..."))
+    message: |
+      Unsafe deserialization with pickle detected.
+      Pickle can execute arbitrary code during deserialization.
+      Use JSON or other safe serialization formats instead.
+    languages: [python]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-502: Deserialization of Untrusted Data"
+      owasp: "A08:2021 - Software and Data Integrity Failures"
+      confidence: HIGH
+      likelihood: HIGH
+      impact: CRITICAL
+      technology:
+        - python
+
+  # Rule: Debug mode enabled in production
+  - id: fastapi-debug-mode-production
+    patterns:
+      - pattern-either:
+          - pattern: app.run(debug=True)
+          - pattern: uvicorn.run(..., reload=True, ...)
+      - pattern-not-inside: |
+          if os.getenv("ENVIRONMENT") == "development":
+            ...
+      - pattern-not-inside: |
+          if ENVIRONMENT == "development":
+            ...
+    message: |
+      Debug mode or reload enabled in production mode.
+      This can expose sensitive information and impact performance.
+      Only enable debug/reload in development environment.
+    languages: [python]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-489: Active Debug Code"
+      owasp: "A05:2021 - Security Misconfiguration"
+      confidence: HIGH
+      likelihood: MEDIUM
+      impact: MEDIUM
+      technology:
+        - fastapi
+        - uvicorn

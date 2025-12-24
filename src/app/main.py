@@ -18,13 +18,25 @@ from src.middleware.ratelimits import (
     get_limiter,
 )
 
-app = FastAPI(title="Secure Team Voting Board", version="0.8.0")
+app = FastAPI(title="Secure Team Voting Board", version="0.10.1")
 
 
 # Trusted Host Middleware
 ENVIRONMENT = os.getenv("ENVIRONMENT", "development")
+if not ENVIRONMENT or ENVIRONMENT not in ["development", "staging", "production"]:
+    logger.warning(f"Invalid ENVIRONMENT value: {ENVIRONMENT}, defaulting to development")
+    ENVIRONMENT = "development"
+
 if ENVIRONMENT == "production":
-    allowed_hosts = os.getenv("ALLOWED_HOSTS", "").split(",")
+    allowed_hosts_str = os.getenv("ALLOWED_HOSTS", "")
+    if not allowed_hosts_str:
+        logger.error("ALLOWED_HOSTS must be set in production")
+        raise ValueError("ALLOWED_HOSTS environment variable is required in production")
+
+    allowed_hosts = [host.strip() for host in allowed_hosts_str.split(",") if host.strip()]
+    if not allowed_hosts:
+        raise ValueError("ALLOWED_HOSTS cannot be empty in production")
+
     app.add_middleware(TrustedHostMiddleware, allowed_hosts=allowed_hosts)
 
 # CORS Middleware
@@ -35,7 +47,14 @@ if ENVIRONMENT == "development":
         "http://localhost:8080",  # Адрес веб-апи
     ]
 else:
-    origins = os.getenv("ALLOWED_ORIGINS", "").split(",")
+    allowed_origins_str = os.getenv("ALLOWED_ORIGINS", "")
+    if not allowed_origins_str:
+        logger.error("ALLOWED_ORIGINS must be set in non-development environments")
+        raise ValueError("ALLOWED_ORIGINS environment variable is required")
+
+    origins = [origin.strip() for origin in allowed_origins_str.split(",") if origin.strip()]
+    if not origins:
+        raise ValueError("ALLOWED_ORIGINS cannot be empty")
 
 app.add_middleware(
     CORSMiddleware,
