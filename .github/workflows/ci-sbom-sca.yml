@@ -20,6 +20,7 @@ on:
 permissions:
   contents: read
   security-events: write
+  issues: write
 
 concurrency:
   group: sbom-sca-${{ github.ref }}
