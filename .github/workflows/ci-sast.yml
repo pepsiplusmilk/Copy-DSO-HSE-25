@@ -8,7 +8,7 @@ on:
       - '**/*.py'
       - 'security/**'
       - '.gitleaks.toml'
-      - '.github/workflows/ci-sast-secrets.yml'
+      - 'ci-sast.yml'
   pull_request:
     paths:
       - '**/*.py'
