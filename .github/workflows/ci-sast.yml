@@ -26,7 +26,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  SEMGREP_VERSION: "v1.146.0"
+  SEMGREP_VERSION: "1.146.0"
   GITLEAKS_VERSION: "v8.30.0"
   REPORTS_DIR: "docs/reports/pipeline-generated-reports/sast-secrets"
 
@@ -35,7 +35,7 @@ jobs:
     name: Semgrep SAST Analysis
     runs-on: ubuntu-latest
     container:
-      image: semgrep/semgrep:${{ env.SEMGREP_VERSION }}
+      image: semgrep/semgrep:1.146.0
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
