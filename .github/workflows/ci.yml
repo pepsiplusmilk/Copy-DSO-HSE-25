@@ -46,7 +46,7 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: .
-          file: Dockerfile
+          file: ./Dockerfile
           tags: sec-vote-board:ci
           load: true
           cache-from: type=gha
@@ -87,7 +87,7 @@ jobs:
       - name: Build image with cache
         uses: docker/build-push-action@v5
         with:
-          context: ..
+          context: .
           file: ../Dockerfile
           tags: sec-vote-board:dev
           load: true
