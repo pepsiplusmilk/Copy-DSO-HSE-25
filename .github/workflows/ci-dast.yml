@@ -77,19 +77,30 @@ jobs:
           docker compose logs
           exit 1
 
+      - name: Prepare reports directory
+        run: |
+          mkdir -p ${{ env.REPORTS_DIR }}
+          chmod 777 ${{ env.REPORTS_DIR }}
+
       - name: Run OWASP ZAP Baseline Scan
         run: |
           mkdir -p ${{ env.REPORTS_DIR }}
           docker run --rm \
             --network host \
             -v ${{ github.workspace }}/${{ env.REPORTS_DIR }}:/zap/wrk:rw \
+            -u root \
             ghcr.io/zaproxy/zaproxy:stable \
             zap-baseline.py \
             -t http://localhost:8080 \
             -r zap_baseline.html \
             -J zap_baseline.json \
-            -I
-        continue-on-error: true
+            -I || true
+
+      - name: Fix report permissions
+        if: always()
+        run: |
+          sudo chown -R $USER:$USER ${{ env.REPORTS_DIR }}
+          ls -la ${{ env.REPORTS_DIR }}
 
       - name: Stop docker compose
         if: always()
@@ -104,7 +115,18 @@ jobs:
       - name: Generate ZAP summary report
         if: always()
         run: |
-          python scripts/generate_zap_summary.py ${{ env.REPORTS_DIR }}
+          if [ -f "${{ env.REPORTS_DIR }}/zap_baseline.json" ]; then
+            python scripts/generate_zap_summary.py ${{ env.REPORTS_DIR }}
+          else
+            echo "ZAP JSON report not found, creating stub summary"
+            cat > ${{ env.REPORTS_DIR }}/zap_summary.md << 'EOF'
+          # DAST Scan Summary
+
+          **Status:** Scan failed to generate reports
+
+          Please check the ZAP logs for details.
+          EOF
+          fi
         continue-on-error: true
 
       - name: Upload ZAP reports
