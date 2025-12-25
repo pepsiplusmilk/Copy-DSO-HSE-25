@@ -15,7 +15,6 @@ services:
 
   migrations:
     build: .
-    image: sec-vote-board:dev
     env_file: .env
     command: ["alembic", "upgrade", "head"]
     depends_on:
