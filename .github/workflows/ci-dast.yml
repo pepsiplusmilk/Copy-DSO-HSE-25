@@ -31,18 +31,6 @@ concurrency:
 env:
   REPORTS_DIR: "docs/reports/pipeline-generated-reports/dast"
 
-  DATABASE_URL: ${{ secrets.DATABASE_URL }}
-  ALEMBIC_DATABASE_URL: ${{ secrets.ALEMBIC_DATABASE_URL }}
-  ALLOWED_ORIGINS: ${{ secrets.ALLOWED_ORIGINS }}
-
-  POSTGRES_DB: ${{ secrets.POSTGRES_DB }}
-  POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
-  POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
-
-  PYTHONUNBUFFERED: ${{ env.PYTHONUNBUFFERED }}
-  ENVIRONMENT: ${{ env.ENVIRONMENT }}
-  LOG_LEVEL: ${{ env.LOG_LEVEL }}
-
 jobs:
   dast-zap-baseline:
     name: OWASP ZAP Baseline Scan
@@ -56,15 +44,15 @@ jobs:
       - name: Create .env file for CI
         run: |
           cat > .env << EOF
-          DATABASE_URL=${DATABASE_URL}
-          POSTGRES_DB=${POSTGRES_DB}
-          POSTGRES_USER=${POSTGRES_USER}
-          POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-          ALEMBIC_DATABASE_URL=${ALEMBIC_DATABASE_URL}
-          PYTHONUNBUFFERED=${PYTHONUNBUFFERED}
-          ENVIRONMENT=${ENVIRONMENT}
-          LOG_LEVEL=${LOG_LEVEL}
-          ALLOWED_ORIGINS=${ALLOWED_ORIGINS}
+          DATABASE_URL="${{ secrets.DATABASE_URL }}"
+          POSTGRES_DB="${{ secrets.POSTGRES_DB }}"
+          POSTGRES_USER="${{ secrets.POSTGRES_USER }}"
+          POSTGRES_PASSWORD="${{ secrets.POSTGRES_PASSWORD }}"
+          ALEMBIC_DATABASE_URL="${{ secrets.ALEMBIC_DATABASE_URL }}"
+          PYTHONUNBUFFERED="${{ env.PYTHONUNBUFFERED }}"
+          ENVIRONMENT="${{ env.ENVIRONMENT }}"
+          LOG_LEVEL="${{ env.LOG_LEVEL }}"
+          ALLOWED_ORIGINS="${{ secrets.ALLOWED_ORIGINS }}"
           EOF
 
       - name: Docker compose startup
