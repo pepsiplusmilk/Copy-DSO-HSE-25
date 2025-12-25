@@ -14,6 +14,7 @@ services:
       - backend
 
   migrations:
+    build: .
     image: sec-vote-board:dev
     env_file: .env
     command: ["alembic", "upgrade", "head"]
