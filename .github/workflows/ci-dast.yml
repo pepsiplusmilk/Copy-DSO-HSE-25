@@ -49,9 +49,9 @@ jobs:
           POSTGRES_USER="${{ secrets.POSTGRES_USER }}"
           POSTGRES_PASSWORD="${{ secrets.POSTGRES_PASSWORD }}"
           ALEMBIC_DATABASE_URL="${{ secrets.ALEMBIC_DATABASE_URL }}"
-          PYTHONUNBUFFERED="${{ env.PYTHONUNBUFFERED }}"
-          ENVIRONMENT="${{ env.ENVIRONMENT }}"
-          LOG_LEVEL="${{ env.LOG_LEVEL }}"
+          PYTHONUNBUFFERED="${{ vars.PYTHONUNBUFFERED }}"
+          ENVIRONMENT="${{ vars.ENVIRONMENT }}"
+          LOG_LEVEL="${{ vars.LOG_LEVEL }}"
           ALLOWED_ORIGINS="${{ secrets.ALLOWED_ORIGINS }}"
           EOF
 
