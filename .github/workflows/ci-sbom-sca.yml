@@ -1,4 +1,4 @@
-name: SBOM & SCA (Software Analysis)
+name: CI - SBOM & SCA (Software Analysis)
 
 on:
   workflow_dispatch:

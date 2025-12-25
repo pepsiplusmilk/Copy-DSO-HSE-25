@@ -1,0 +1,172 @@
+name: CI - DAST (ZAP Baseline)
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'src/**'
+      - '.github/workflows/ci-dast.yml'
+      - 'compose.yaml'
+      - 'Dockerfile'
+      - 'requirements.txt'
+      - 'scripts/generate_zap_summary.py'
+  pull_request:
+    paths:
+      - 'src/**'
+      - 'compose.yaml'
+      - 'Dockerfile'
+      - '.github/workflows/ci-dast.yml'
+
+permissions:
+  contents: read
+  security-events: write
+  issues: write
+  pull-requests: write
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  REPORTS_DIR: "docs/reports/pipeline-generated-reports/dast"
+
+jobs:
+  dast-zap-baseline:
+    name: OWASP ZAP Baseline Scan
+    runs-on: ubuntu-latest
+    environment: testing
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Create .env file for CI
+        run: |
+          cat > .env << EOF
+          DATABASE_URL="${{ secrets.DATABASE_URL }}"
+          POSTGRES_DB="${{ secrets.POSTGRES_DB }}"
+          POSTGRES_USER="${{ secrets.POSTGRES_USER }}"
+          POSTGRES_PASSWORD="${{ secrets.POSTGRES_PASSWORD }}"
+          ALEMBIC_DATABASE_URL="${{ secrets.ALEMBIC_DATABASE_URL }}"
+          PYTHONUNBUFFERED="${{ vars.PYTHONUNBUFFERED }}"
+          ENVIRONMENT="${{ vars.ENVIRONMENT }}"
+          LOG_LEVEL="${{ vars.LOG_LEVEL }}"
+          ALLOWED_ORIGINS="${{ secrets.ALLOWED_ORIGINS }}"
+          EOF
+
+      - name: Docker compose startup
+        run: |
+          docker compose up -d --build
+          echo "Application starting..."
+
+      - name: Application health check
+        run: |
+          max_attempts=30
+          attempt=0
+          while [ $attempt -lt $max_attempts ]; do
+            if curl -sf http://localhost:8080/health > /dev/null 2>&1; then
+              echo "Application is ready"
+              exit 0
+            fi
+            echo "Waiting... ($((attempt + 1))/$max_attempts)"
+            sleep 2
+            attempt=$((attempt + 1))
+          done
+          echo "Application failed to start"
+          docker compose logs
+          exit 1
+
+      - name: Prepare reports directory
+        run: |
+          mkdir -p ${{ env.REPORTS_DIR }}
+          chmod 777 ${{ env.REPORTS_DIR }}
+
+      - name: Run OWASP ZAP Baseline Scan
+        run: |
+          mkdir -p ${{ env.REPORTS_DIR }}
+          docker run --rm \
+            --network host \
+            -v ${{ github.workspace }}/${{ env.REPORTS_DIR }}:/zap/wrk:rw \
+            -u root \
+            ghcr.io/zaproxy/zaproxy:stable \
+            zap-baseline.py \
+            -t http://localhost:8080 \
+            -r zap_baseline.html \
+            -J zap_baseline.json \
+            -I || true
+
+      - name: Fix report permissions
+        if: always()
+        run: |
+          sudo chown -R $USER:$USER ${{ env.REPORTS_DIR }}
+          ls -la ${{ env.REPORTS_DIR }}
+
+      - name: Stop docker compose
+        if: always()
+        run: docker compose down -v
+
+      - name: Setup Python for report generation
+        if: always()
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Generate ZAP summary report
+        if: always()
+        run: |
+          if [ -f "${{ env.REPORTS_DIR }}/zap_baseline.json" ]; then
+            python scripts/generate_zap_summary.py ${{ env.REPORTS_DIR }}
+          else
+            echo "ZAP JSON report not found, creating stub summary"
+            cat > ${{ env.REPORTS_DIR }}/zap_summary.md << 'EOF'
+          # DAST Scan Summary
+
+          **Status:** Scan failed to generate reports
+
+          Please check the ZAP logs for details.
+          EOF
+          fi
+        continue-on-error: true
+
+      - name: Upload ZAP reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: DAST-Reports
+          path: |
+            ${{ env.REPORTS_DIR }}/zap_baseline.html
+            ${{ env.REPORTS_DIR }}/zap_baseline.json
+            ${{ env.REPORTS_DIR }}/zap_summary.md
+          retention-days: 30
+          if-no-files-found: warn
+
+      - name: Display ZAP summary
+        if: always()
+        run: |
+          echo "### DAST Scan Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if [ -f "${{ env.REPORTS_DIR }}/zap_summary.md" ]; then
+            cat ${{ env.REPORTS_DIR }}/zap_summary.md >> $GITHUB_STEP_SUMMARY
+          else
+            echo "ZAP summary report not generated" >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Comment PR with DAST results
+        if: github.event_name == 'pull_request' && always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const summaryPath = '${{ env.REPORTS_DIR }}/zap_summary.md';
+
+            if (fs.existsSync(summaryPath)) {
+              const summary = fs.readFileSync(summaryPath, 'utf8');
+
+              github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: summary
+              });
+            }

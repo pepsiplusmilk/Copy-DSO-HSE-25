@@ -1,0 +1,9 @@
+# ZAP ignore rules for false positives and accepted risks
+
+# Informational alerts (low priority)
+10049  # Storable but Non-Cacheable Content
+10096  # Timestamp Disclosure
+10109  # Modern Web Application
+
+# Development-specific (acceptable in dev environment)
+90022  # Application Error Disclosure

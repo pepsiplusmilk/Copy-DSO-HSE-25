@@ -20,6 +20,7 @@ paths = [
     '''.env.ci''',
     '''coverage''',
     '''__pycache__''',
+    '''docs/reports/pipeline-generated-reports/dast''',
 ]
 
 # Regexes for test tokens and example values

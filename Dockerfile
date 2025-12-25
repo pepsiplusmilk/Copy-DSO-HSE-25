@@ -28,9 +28,10 @@ RUN --mount=type=cache,target=/root/.cache/pip \
     pip install --no-cache-dir --no-index --find-links /wheels -r requirements.txt
 
 COPY docker-entrypoint.sh /app/docker-entrypoint.sh
-RUN chmod +x /app/docker-entrypoint.sh
 
 COPY . .
+
+RUN chmod +x /app/docker-entrypoint.sh
 
 # ensure correct ownership before switching user
 RUN chown -R appuser:appgroup /app
